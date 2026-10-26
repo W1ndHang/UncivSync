@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- UncivSync 客户端启动器配置 —— 2026-09-30 起改为【自包含打包】模式：
+     dontWrapJar=false，游戏 jar 整个嵌进 exe。客户端目录不再放 jar，
+     玩家拿到的就是"一个 exe + 首次运行生成的资源缓存"。
+     <jar> 指向同目录下名为 UncivSync.jar 的文件（构建时由 deploy-client.py
+     把刚编译的 jar 复制过去再调 launch4jc）。 -->
+<launch4jConfig>
+  <dontWrapJar>false</dontWrapJar>
+  <headerType>gui</headerType>
+  <jar>UncivSync.jar</jar>
+  <outfile>UncivSync.exe</outfile>
+  <errTitle>UncivSync Launcher Error</errTitle>
+  <cmdLine></cmdLine>
+  <chdir>.</chdir>
+  <priority>normal</priority>
+  <downloadUrl>https://adoptium.net/</downloadUrl>
+  <supportUrl>https://github.com/yairm210/Unciv</supportUrl>
+  <customProcName>true</customProcName>
+  <stayAlive>false</stayAlive>
+  <icon>Unciv.ico</icon>
+  <classPath>
+    <mainClass>com.unciv.app.desktop.DesktopLauncher</mainClass>
+  </classPath>
+  <jre>
+    <path></path>
+    <requiresJdk>false</requiresJdk>
+    <requires64Bit>true</requires64Bit>
+    <minVersion>17</minVersion>
+    <maxVersion></maxVersion>
+    <initialHeapSize>512</initialHeapSize>
+    <maxHeapSize>4096</maxHeapSize>
+  </jre>
+  <versionInfo>
+    <fileVersion>1.0.0.0</fileVersion>
+    <txtFileVersion>1.0.0</txtFileVersion>
+    <fileDescription>UncivSync - Unciv self-hosted simultaneous-turn multiplayer</fileDescription>
+    <copyright>Copyright (c) 2026 W1ndHang</copyright>
+    <productVersion>1.0.0.0</productVersion>
+    <txtProductVersion>1.0.0</txtProductVersion>
+    <productName>UncivSync</productName>
+    <companyName>W1ndHang</companyName>
+    <internalName>UncivSync</internalName>
+    <originalFilename>UncivSync.exe</originalFilename>
+  </versionInfo>
+</launch4jConfig>
