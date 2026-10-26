@@ -71,30 +71,29 @@ UncivSync 为 [Unciv](https://github.com/yairm210/Unciv) 加入了**实时同步
 
 客户端与服务端请使用同一发布版本。
 
-| 组件          | 文件                                                      | 运行要求                     |
-| ----------- | ------------------------------------------------------- | ------------------------ |
-| Windows 客户端 | `UncivSync.exe`                                         | 64 位 Windows，推荐 Java 21+ |
-| Android 客户端 | `UncivSync.apk`                                         | 安装 APK，无需另装 Java         |
-| 服务端         | `server.jar`、`UncivSync.jar`、`kotlin-stdlib-2.4.10.jar` | Java 21+，三个 JAR 放在同一目录   |
-| 网页管理页       | 随服务端提供                                                  | 浏览器                      |
+在 [Releases](https://github.com/W1ndHang/UncivSync/releases) 下载对应附件。当前版本为 **1.0.02**：
 
-Windows 客户端和服务端不内置 Java。游玩或开服需**安装 Java 运行环境**，从源码构建需要 JDK。
+| 组件／架构 | 附件 | 运行要求 |
+| --- | --- | --- |
+| Android 通用客户端 | `UncivSync-1.0.02-android.apk` | 包含 ARMv7、ARM64、x86、x86_64，无需另装 Java |
+| Windows x64 客户端 | `UncivSync-1.0.02-windows-x64.exe` | 64 位 Intel／AMD Windows，64 位 Java 17+，推荐 Java 21+ |
+| Windows x86 兼容客户端 | `UncivSync-1.0.02-windows-x86.exe` | 32 位 Windows 和 32 位 Java 17+，采用较小内存上限 |
+| 跨平台服务端 | `UncivSync-Server-1.0.02.jar` | Java 21+，单个 JAR，无需另下载依赖 |
+| 网页管理页 | 随服务端提供 | 浏览器 |
+
+**x64 与 AMD64 是同一种架构**，Intel 和 AMD 的常见 64 位电脑使用同一个 x64 附件。Windows ARM64 原生客户端暂未提供。Windows 客户端和服务端不内置 Java；安装与系统架构匹配的 Java 运行环境，从源码构建需要 JDK。
 
 ### 启动服务端
+
 #### 1. 准备文件并启动
 
-将三个服务端 JAR 放在同一文件夹：
-```text
-Windows-Server/
-├── server.jar
-├── UncivSync.jar
-└── kotlin-stdlib-2.4.10.jar
-```
+下载 `UncivSync-Server-1.0.02.jar`，放入一个独立文件夹。服务端已包含运行所需的游戏核心、规则集和依赖。
+
 在这个文件夹打开终端，执行：
 
 ```sh
 java -version
-java -jar server.jar --admin-pass "YOUR_ADMIN_PASSWORD"
+java -jar UncivSync-Server-1.0.02.jar --admin-pass "YOUR_ADMIN_PASSWORD"
 ```
 
 将 `YOUR_ADMIN_PASSWORD` 换成自己的管理口令。首次启动会自动建立存档目录和所需缓存。
@@ -162,7 +161,7 @@ http://服务器IP:30217/admin/?pw=你的管理口令
 查看全部启动参数：
 
 ```sh
-java -jar server.jar --help
+java -jar UncivSync-Server-1.0.02.jar --help
 ```
 
 | 参数 | 默认值 | 用途 |
@@ -190,7 +189,7 @@ python deploy-client.py
 python build.py
 ```
 
-客户端和服务端生成在 `server/build/deploy/`。运行其中的 `Server/server.jar` 时，保持两个依赖 JAR 同级。
+客户端和服务端生成在 `server/build/deploy/`。其中 `Server/server.jar` 已可独立运行；`python pack-release.py` 会将已构建的 APK、两种 Windows 客户端和服务端导出到 `releases/`，并加上版本与架构名称。
 
 安卓构建：设置 `ANDROID_HOME`，在 `client/` 中执行：
 
@@ -210,7 +209,7 @@ APK 位于 `client/android/build/outputs/apk/release/`。正式分发更新时�
 | 本机能连，其他设备不能连 | 其他设备应填写服务端可访问地址，不能使用自己的 `127.0.0.1` |
 | 管理页无法访问 | 默认使用 `30217`；共用端口时使用游戏端口，并保留 `/admin/?pw=...` |
 | 管理页提示未授权 | 检查管理口令和 URL 编码；本机访问也需口令 |
-| 提示缺少类或 passive mode | 保持三个配套 JAR 同级，检查启动日志中的规则集加载结果 |
+| 提示缺少类或 passive mode | 重新下载完整的单文件服务端，确认 Java 21+，检查规则集加载日志 |
 | 无法控制自己的文明 | 检查房主分配的玩家 ID，避免多人共用同一 ID |
 | 回合没有推进 | 检查就绪、暂停、掉线等待和动态回合设置；首回合不限时 |
 
@@ -295,33 +294,29 @@ Actions take effect live; actions competing for the same target have an executio
 
 Use the same release version for clients and the server.
 
-| Component | Files | Requirements |
+Download the appropriate attachment from [Releases](https://github.com/W1ndHang/UncivSync/releases). The current version is **1.0.02**:
+
+| Component / architecture | Attachment | Requirements |
 | --- | --- | --- |
-| Windows client | `UncivSync.exe` | 64-bit Windows; Java 21+ recommended |
-| Android client | `UncivSync.apk` | Install the APK; no separate Java installation |
-| Server | `server.jar`, `UncivSync.jar`, `kotlin-stdlib-2.4.10.jar` | Java 21+; keep all three JARs together |
+| Android universal client | `UncivSync-1.0.02-android.apk` | Includes ARMv7, ARM64, x86 and x86_64; no separate Java installation |
+| Windows x64 client | `UncivSync-1.0.02-windows-x64.exe` | 64-bit Intel/AMD Windows and 64-bit Java 17+; Java 21+ recommended |
+| Windows x86-compatible client | `UncivSync-1.0.02-windows-x86.exe` | 32-bit Windows and 32-bit Java 17+; uses a smaller heap limit |
+| Cross-platform server | `UncivSync-Server-1.0.02.jar` | Java 21+; one JAR with dependencies included |
 | Browser dashboard | Included with the server | Browser |
 
-The Windows client and server do not bundle Java. **Install a Java runtime** to play on Windows or host a server; building from source requires a JDK.
+**x64 and AMD64 refer to the same architecture**: common 64-bit Intel and AMD PCs use the same x64 attachment. A native Windows ARM64 client is not currently available. The Windows client and server do not bundle Java. Install a Java runtime matching your system architecture; building from source requires a JDK.
 
 ### Start a server
 
 #### 1. Prepare the files and launch
 
-Keep all three server JARs in one folder:
-
-```text
-Windows-Server/
-├── server.jar
-├── UncivSync.jar
-└── kotlin-stdlib-2.4.10.jar
-```
+Download `UncivSync-Server-1.0.02.jar` and place it in a dedicated folder. The game core, rulesets and runtime dependencies are already bundled.
 
 Open a terminal in that folder and run:
 
 ```sh
 java -version
-java -jar server.jar --admin-pass "YOUR_ADMIN_PASSWORD"
+java -jar UncivSync-Server-1.0.02.jar --admin-pass "YOUR_ADMIN_PASSWORD"
 ```
 
 Replace `YOUR_ADMIN_PASSWORD` with your own management password. Save and cache directories are created on the first run.
@@ -389,7 +384,7 @@ Open a room card for details, or search by its full game ID. The sidebar shows t
 List all startup options:
 
 ```sh
-java -jar server.jar --help
+java -jar UncivSync-Server-1.0.02.jar --help
 ```
 
 | Option | Default | Purpose |
@@ -417,7 +412,7 @@ python deploy-client.py
 python build.py
 ```
 
-The client and server are generated under `server/build/deploy/`. Keep both dependency JARs beside `Server/server.jar` when running it.
+The client and server are generated under `server/build/deploy/`. `Server/server.jar` runs independently. After building Android as well, run `python pack-release.py` to export the APK, both Windows clients and the server to `releases/` with version and architecture names.
 
 For Android, set `ANDROID_HOME` and run from `client/`:
 
@@ -437,7 +432,7 @@ The APK is generated under `client/android/build/outputs/apk/release/`. Use your
 | Works locally but not from another device | Use the server's reachable address; another device's `127.0.0.1` points to itself |
 | Dashboard unavailable | Use `30217` by default, or the game port when shared; keep `/admin/?pw=...` |
 | Dashboard reports unauthorized | Check the password and URL encoding; local access also needs the password |
-| Missing classes or passive mode | Keep the three matching JARs together and inspect ruleset initialization in startup logs |
+| Missing classes or passive mode | Download the complete standalone server again, use Java 21+, and inspect the ruleset initialization log |
 | Cannot control a civilization | Check assigned player IDs; avoid sharing one identity |
 | Turn does not advance | Check readiness, pause, disconnected players, and Dynamic Turns; the opening turn is untimed |
 

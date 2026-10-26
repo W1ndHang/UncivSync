@@ -45,14 +45,13 @@ public final class Main {
             } else if ("-h".equals(a) || "--help".equals(a)) {
                 System.out.println("UncivSync Server - Unciv self-hosted simultaneous-turn server");
                 System.out.println();
-                System.out.println("Usage: java -jar server.jar [--port N] [--admin-port N] [--saves DIR] [--gamejar FILE] [--resources DIR] [--no-log-ops] [--admin-pass PW]");
+                System.out.println("Usage: java -jar UncivSync-Server.jar [--port N] [--admin-port N] [--saves DIR] [--gamejar FILE] [--resources DIR] [--no-log-ops] [--admin-pass PW]");
                 System.out.println();
                 System.out.println("  --port N       WebSocket port (default 30127)");
                 System.out.println("  --admin-port N HTTP port for the admin page (default 30217; 0 = share game port)");
                 System.out.println("  --saves DIR    Directory containing <gameId>.json save files");
                 System.out.println("                 (default: Saves/ next to this jar)");
-                System.out.println("  --gamejar FILE Path to UncivSync.jar (needed to load Ruleset + simulate GameInfo)");
-                System.out.println("                 (default: ../Client/UncivSync.jar next to this jar)");
+                System.out.println("  --gamejar FILE Optional ruleset resource JAR override (default: this standalone JAR)");
                 System.out.println("  --resources DIR Directory with jsons/ extracted (auto-extracts from --gamejar if omitted)");
                 System.out.println();
                 System.out.println("Clients connect to ws://<host>:" + port + "/ws?gameId=<id>&playerId=<id>&nickname=<name>&playerUUID=<uuid>");
@@ -64,7 +63,7 @@ public final class Main {
             }
         }
 
-        // No --gamejar: auto-detect. Server/server.jar -> ../Client/UncivSync.jar
+        // Prefer the bundled core and resources; retain legacy deployment fallbacks.
         if (gameJar == null) gameJar = autoDetectGameJar();
         // No --saves: use Saves/ next to this jar, so the whole thing stays portable.
         if (savesDir == null) savesDir = defaultSavesDir();
@@ -188,13 +187,20 @@ public final class Main {
         return false;
     }
 
-    /**
-     * From this jar's location derive the game jar.
-     * 新布局（2026-09-30 起）：客户端发布为自包含 exe，游戏核心 jar 挪到 Server/ 目录
-     * 与 server.jar 同级（MANIFEST Class-Path 也指向它）。旧布局（../Client/UncivSync.jar）
-     * 保留为后备，兼容旧部署。
-     */
+    /** Prefer the standalone JAR itself, then support older development layouts. */
     private static File autoDetectGameJar() {
+        try {
+            File self = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            if (self.isFile()) {
+                try (java.util.jar.JarFile archive = new java.util.jar.JarFile(self)) {
+                    if (archive.getJarEntry("com/unciv/logic/GameInfo.class") != null
+                            && archive.getJarEntry("jsons/Civ V - Vanilla/Nations.json") != null) {
+                        return self.getCanonicalFile();
+                    }
+                }
+            }
+        } catch (Exception ignored) { }
+
         // Candidate 0（现行）: Server/UncivSync.jar —— 与 server.jar 同目录
         File dir = jarDirectory();
         if (dir != null) {
