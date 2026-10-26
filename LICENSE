@@ -1,0 +1,26 @@
+UncivSync licensing
+==================
+
+This repository contains components under different licenses.
+
+1. Unciv-based client source code and modifications
+   Mozilla Public License 2.0 (MPL-2.0)
+   Project-specific modifications: Copyright (c) 2026 W1ndHang
+   Full terms: client/LICENSE
+
+2. Original UncivSync server source code and build helpers
+   PolyForm Noncommercial License 1.0.0
+   Copyright (c) 2026 W1ndHang
+   SPDX identifier: PolyForm-Noncommercial-1.0.0
+   Full terms and required notices: server/LICENSE
+
+   The server license permits use, modification and distribution for
+   permitted noncommercial purposes, subject to its terms. It does not
+   grant unrestricted commercial-use rights.
+
+3. Third-party assets, libraries and other materials
+   Their respective licenses and notices continue to apply.
+   See CREDITS.md and the notices accompanying those components.
+
+The server license does not replace the licenses of the client or any
+third-party material.
