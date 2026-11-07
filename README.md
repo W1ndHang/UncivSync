@@ -71,14 +71,16 @@ UncivSync 为 [Unciv](https://github.com/yairm210/Unciv) 加入了**实时同步
 
 客户端与服务端请使用同一发布版本。
 
-在 [Releases](https://github.com/W1ndHang/UncivSync/releases) 下载对应附件。当前版本为 **1.0.02**：
+在 [Releases](https://github.com/W1ndHang/UncivSync/releases) 下载对应附件。当前版本为 **1.0.03**：
+
+更新说明见 [CHANGELOG.md](CHANGELOG.md)。
 
 | 组件／架构 | 附件 | 运行要求 |
 | --- | --- | --- |
-| Android 通用客户端 | `UncivSync-1.0.02-android.apk` | 包含 ARMv7、ARM64、x86、x86_64，无需另装 Java |
-| Windows x64 客户端 | `UncivSync-1.0.02-windows-x64.exe` | 64 位 Intel／AMD Windows，64 位 Java 17+，推荐 Java 21+ |
-| Windows x86 兼容客户端 | `UncivSync-1.0.02-windows-x86.exe` | 32 位 Windows 和 32 位 Java 17+，采用较小内存上限 |
-| 跨平台服务端 | `UncivSync-Server-1.0.02.jar` | Java 21+，单个 JAR，无需另下载依赖 |
+| Android 通用客户端 | `UncivSync-1.0.03-android.apk` | 包含 ARMv7、ARM64、x86、x86_64，无需另装 Java |
+| Windows x64 客户端 | `UncivSync-1.0.03-windows-x64.exe` | 64 位 Intel／AMD Windows，64 位 Java 17+，推荐 Java 21+ |
+| Windows x86 兼容客户端 | `UncivSync-1.0.03-windows-x86.exe` | 32 位 Windows 和 32 位 Java 17+，采用较小内存上限 |
+| 跨平台服务端 | `UncivSync-Server-1.0.03.jar` | Java 21+，单个 JAR，无需另下载依赖 |
 | 网页管理页 | 随服务端提供 | 浏览器 |
 
 **x64 与 AMD64 是同一种架构**，Intel 和 AMD 的常见 64 位电脑使用同一个 x64 附件。Windows ARM64 原生客户端暂未提供。Windows 客户端和服务端不内置 Java；安装与系统架构匹配的 Java 运行环境，从源码构建需要 JDK。
@@ -87,13 +89,13 @@ UncivSync 为 [Unciv](https://github.com/yairm210/Unciv) 加入了**实时同步
 
 #### 1. 准备文件并启动
 
-下载 `UncivSync-Server-1.0.02.jar`，放入一个独立文件夹。服务端已包含运行所需的游戏核心、规则集和依赖。
+下载 `UncivSync-Server-1.0.03.jar`，放入一个独立文件夹。服务端已包含运行所需的游戏核心、规则集和依赖。
 
 在这个文件夹打开终端，执行：
 
 ```sh
 java -version
-java -jar UncivSync-Server-1.0.02.jar --admin-pass "YOUR_ADMIN_PASSWORD"
+java -jar UncivSync-Server-1.0.03.jar --admin-pass "YOUR_ADMIN_PASSWORD"
 ```
 
 将 `YOUR_ADMIN_PASSWORD` 换成自己的管理口令。首次启动会自动建立存档目录和所需缓存。
@@ -161,7 +163,7 @@ http://服务器IP:30217/admin/?pw=你的管理口令
 查看全部启动参数：
 
 ```sh
-java -jar UncivSync-Server-1.0.02.jar --help
+java -jar UncivSync-Server-1.0.03.jar --help
 ```
 
 | 参数 | 默认值 | 用途 |
@@ -294,14 +296,16 @@ Actions take effect live; actions competing for the same target have an executio
 
 Use the same release version for clients and the server.
 
-Download the appropriate attachment from [Releases](https://github.com/W1ndHang/UncivSync/releases). The current version is **1.0.02**:
+Download the appropriate attachment from [Releases](https://github.com/W1ndHang/UncivSync/releases). The current version is **1.0.03**:
+
+See [CHANGELOG.md](CHANGELOG.md) for the update notes.
 
 | Component / architecture | Attachment | Requirements |
 | --- | --- | --- |
-| Android universal client | `UncivSync-1.0.02-android.apk` | Includes ARMv7, ARM64, x86 and x86_64; no separate Java installation |
-| Windows x64 client | `UncivSync-1.0.02-windows-x64.exe` | 64-bit Intel/AMD Windows and 64-bit Java 17+; Java 21+ recommended |
-| Windows x86-compatible client | `UncivSync-1.0.02-windows-x86.exe` | 32-bit Windows and 32-bit Java 17+; uses a smaller heap limit |
-| Cross-platform server | `UncivSync-Server-1.0.02.jar` | Java 21+; one JAR with dependencies included |
+| Android universal client | `UncivSync-1.0.03-android.apk` | Includes ARMv7, ARM64, x86 and x86_64; no separate Java installation |
+| Windows x64 client | `UncivSync-1.0.03-windows-x64.exe` | 64-bit Intel/AMD Windows and 64-bit Java 17+; Java 21+ recommended |
+| Windows x86-compatible client | `UncivSync-1.0.03-windows-x86.exe` | 32-bit Windows and 32-bit Java 17+; uses a smaller heap limit |
+| Cross-platform server | `UncivSync-Server-1.0.03.jar` | Java 21+; one JAR with dependencies included |
 | Browser dashboard | Included with the server | Browser |
 
 **x64 and AMD64 refer to the same architecture**: common 64-bit Intel and AMD PCs use the same x64 attachment. A native Windows ARM64 client is not currently available. The Windows client and server do not bundle Java. Install a Java runtime matching your system architecture; building from source requires a JDK.
@@ -310,13 +314,13 @@ Download the appropriate attachment from [Releases](https://github.com/W1ndHang/
 
 #### 1. Prepare the files and launch
 
-Download `UncivSync-Server-1.0.02.jar` and place it in a dedicated folder. The game core, rulesets and runtime dependencies are already bundled.
+Download `UncivSync-Server-1.0.03.jar` and place it in a dedicated folder. The game core, rulesets and runtime dependencies are already bundled.
 
 Open a terminal in that folder and run:
 
 ```sh
 java -version
-java -jar UncivSync-Server-1.0.02.jar --admin-pass "YOUR_ADMIN_PASSWORD"
+java -jar UncivSync-Server-1.0.03.jar --admin-pass "YOUR_ADMIN_PASSWORD"
 ```
 
 Replace `YOUR_ADMIN_PASSWORD` with your own management password. Save and cache directories are created on the first run.
@@ -384,7 +388,7 @@ Open a room card for details, or search by its full game ID. The sidebar shows t
 List all startup options:
 
 ```sh
-java -jar UncivSync-Server-1.0.02.jar --help
+java -jar UncivSync-Server-1.0.03.jar --help
 ```
 
 | Option | Default | Purpose |

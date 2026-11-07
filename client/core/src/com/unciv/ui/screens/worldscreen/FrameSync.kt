@@ -1172,6 +1172,16 @@ object FrameSync {
     private fun applySim(state: JsonObject) {
         val worldScreen = worldScreenRef?.get() ?: return
         val gameInfo = worldScreen.gameInfo
+        // Install religions before deserializing city/civ managers: their
+        // transient references must resolve against this message's religion map.
+        state["religions"]?.jsonArray?.let { religions ->
+            try {
+                applyReligionState(gameInfo, religions)
+                worldScreen.shouldUpdate = true
+            } catch (t: Throwable) {
+                println("[FrameSync] 宗教应用失败: ${t.javaClass.simpleName}: ${t.message}")
+            }
+        }
         // #12 可见性/见面差分（对齐 GC 的 unitVisibilityPos / meetUnitPos）：
         // 记录"位置相关状态"是否变了，末尾据此决定是否刷新视野，避免每个 sim 都全量重算。
         var viewChanged = false
@@ -1289,13 +1299,7 @@ object FrameSync {
                 (u["obj"] as? JsonPrimitive)?.contentOrNull?.let { o ->
                     if (o.length > 20) {
                         try {
-                            val srcU = com.unciv.json.json().fromJson(MapUnit::class.java, o)
-                            // 按"obj JSON 里实际在场的字段"搬运：服务端快照是全字段写出，
-                            // 在场（包括值为默认值，如升级后行动力=0）一律照搬。
-                            val objElement = json.parseToJsonElement(o).jsonObject
-                            com.unciv.logic.FsStateSplice.copyJsonFields(
-                                unit, srcU, objElement, MapUnit::class.java)
-                            unit.setTransients(gameInfo.ruleset)
+                            if (applyUnitObject(gameInfo, unit, o)) viewChanged = true
                             worldScreen.shouldUpdate = true
                         } catch (t: Throwable) {
                             println("[FrameSync] 单位整对象应用失败: ${t.javaClass.simpleName}: ${t.message}")
@@ -1515,22 +1519,6 @@ object FrameSync {
             if (applied > 0) { viewChanged = true; worldScreen.shouldUpdate = true }
         }
 
-        // ---- 宗教全量（官方序列化器整对象，与存档同格式）----
-        state["religions"]?.jsonArray?.let { relArr ->
-            try {
-                val parsed = com.unciv.json.json().fromJson(
-                    Array<com.unciv.models.Religion>::class.java, relArr.toString())
-                val map = HashMap<String, com.unciv.models.Religion>()
-                for (r in parsed) { r.setTransients(gameInfo); map[r.name] = r }
-                if (map != gameInfo.religions) {
-                    gameInfo.religions = map
-                    worldScreen.shouldUpdate = true
-                }
-            } catch (t: Throwable) {
-                println("[FrameSync] 宗教应用失败: ${t.javaClass.simpleName}: ${t.message}")
-            }
-        }
-
         // ---- 蛮族营地（坐标增量，对齐 GC 的 encampments）----
         // 服务端只发"营地坐标列表"，这里把对应地块的改良设为蛮族营地；营地消失由
         // applyTiles（improvement=""）负责清掉，这里只管加上，不抢着清。
@@ -1575,20 +1563,22 @@ object FrameSync {
         worldScreen.shouldUpdate = true
     }
 
-    /**
-     * 应用文明级快照。目前是**交易请求**——玩家→玩家实时交易的"送达"通道：
-     * 服务端把请求写进权威存档 → sim 携带 `civ.tradeRequests` → 这里写回本地，
-     * 官方的 WorldScreen 会发现 tradeRequests 非空并自动弹出交易窗口（TradePopup）。
-     */
-    /**
-     * 应用间谍投影（服务端发的是**全量**名单，所以这里做一次按 name 的对齐）。
-     *
-     * 顺序很重要：**先定位、再设行动**。因为 `Spy.moveTo(city)` 内部会把行动改成
-     * `Moving(1)` —— 必须让投影里的 action/turns 最后落地，否则会把服务端的真实行动盖成 Moving。
-     *
-     * 另外：`Spy` 的 civInfo / espionageManager / city 都是 @Transient，新建的间谍要
-     * `setTransients(civ)`；city 不用手动 relink —— `getCityOrNull()` 会按 location 自动解析。
-     */
+    /** Apply an official entity snapshot without replacing the selected unit instance. */
+    private fun applyUnitObject(gameInfo: GameInfo, unit: MapUnit, serialized: String): Boolean {
+        val source = com.unciv.json.json().fromJson(MapUnit::class.java, serialized)
+        val owner = gameInfo.getCivilization(source.owner)
+        val changedOwner = unit.civ !== owner
+        if (changedOwner) {
+            unit.civ.units.removeUnit(unit, updateCivInfo = false)
+            unit.assignOwner(owner, updateCivInfo = false)
+        }
+        val fields = json.parseToJsonElement(serialized).jsonObject
+        com.unciv.logic.FsStateSplice.copyJsonFields(unit, source, fields, MapUnit::class.java)
+        unit.setTransients(gameInfo.ruleset)
+        return changedOwner
+    }
+
+    /** Align the full spy roster by name, retaining selected instances and relinking transients. */
     private fun applySpies(civ: Civilization, arr: JsonArray, gameInfo: GameInfo): Int {
         var applied = 0
         try {
@@ -1599,6 +1589,26 @@ object FrameSync {
                 val o = elem as? JsonObject ?: continue
                 val spyName = (o["name"] as? JsonPrimitive)?.contentOrNull ?: continue
                 seen.add(spyName)
+                val serialized = when (val obj = o["obj"]) {
+                    is JsonObject -> obj.toString()
+                    is JsonPrimitive -> obj.contentOrNull
+                    else -> null
+                }
+                if (serialized != null) {
+                    val source = com.unciv.json.json().fromJson(Spy::class.java, serialized)
+                    require(source.name == spyName) { "Spy identity mismatch" }
+                    val existing = byName[spyName]
+                    val target = if (existing == null) {
+                        em.spyList.add(source)
+                        source
+                    } else {
+                        com.unciv.logic.FsStateSplice.copyFields(existing, source)
+                        existing
+                    }
+                    target.setTransients(civ)
+                    applied++
+                    continue
+                }
                 val rank = (o["rank"] as? JsonPrimitive)?.intOrNull ?: 1
 
                 val spy = byName[spyName] ?: run {
@@ -1636,6 +1646,15 @@ object FrameSync {
             println("[FrameSync] 应用间谍 sim 失败: ${t.javaClass.simpleName}: ${t.message}")
         }
         return applied
+    }
+
+    private fun applyReligionState(gameInfo: GameInfo, religions: JsonArray) {
+        val parsed = com.unciv.json.json().fromJson(
+            Array<com.unciv.models.Religion>::class.java, religions.toString())
+        val map = HashMap<String, com.unciv.models.Religion>()
+        for (religion in parsed) { religion.setTransients(gameInfo); map[religion.name] = religion }
+        gameInfo.religions = map
+        for (civ in gameInfo.civilizations) civ.religionManager.setTransients(civ)
     }
 
     /** 反序列化并整体替换 religionManager（服务端权威），失败只打日志不中断本条 sim。 */

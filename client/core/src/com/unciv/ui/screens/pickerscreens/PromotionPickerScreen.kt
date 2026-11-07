@@ -91,12 +91,7 @@ class PromotionPickerScreen private constructor(
             val renameButton = "Choose name for [${unit.name}]".toTextButton()
             renameButton.onClick {
                 UnitRenamePopup(this, unit) {
-                    // UncivSync: 单位改名上报（服务端权威；用 civ+类型+坐标稳定定位单位）
-                    if (FrameSync.isFsMode(unit.civ.gameInfo))
-                        FrameSync.sendUnitOp(
-                            unit, "unit.rename",
-                            extra = mapOf("name" to (unit.instanceName ?: ""))
-                        )
+                    // The shared rename popup submits the authoritative command.
                     game.replaceCurrentScreen{ recreate() }
                 }
             }

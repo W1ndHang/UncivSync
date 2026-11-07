@@ -296,8 +296,11 @@ public final class FsRoom {
 
     public void removeSession(FsSession s) {
         sessions.remove(s);
-        readyPlayers.remove(s.playerId);
-        offlineSince.put(s.playerId, System.currentTimeMillis());
+        // Readiness belongs to the player and current turn, not the socket.
+        // Reconnecting (including replacing a live socket) must not undo Next Turn.
+        // Turn advancement and explicit uncompleteTurn clear it instead.
+        if (sessions.stream().noneMatch(other -> other.playerId.equals(s.playerId)))
+            offlineSince.put(s.playerId, System.currentTimeMillis());
         System.out.println("[房间] 玩家[" + s.nickname + "] 离开 (playerId=" + s.playerId + ")");
         logEvent("player", "leave", s.nickname);
         // In async mode, a player leaving doesn't reset ready state — their save

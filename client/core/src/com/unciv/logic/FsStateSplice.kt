@@ -54,7 +54,7 @@ object FsStateSplice {
         }
 
     /**
-     * 把 [src] 的序列化字段逐个搬进 [dst]（同类实例，引用拷贝）。
+     * 把完整 [src] 的序列化字段逐个搬进 [dst]（同类实例，含 null，引用拷贝）。
      * [inclusiveBase]：搬运字段声明所处的最上层类（含自身）。
      * @return 实际搬动的字段数
      */
@@ -93,7 +93,7 @@ object FsStateSplice {
         require(dst.javaClass == src.javaClass) { "splice 类型不一致: ${dst.javaClass} vs ${src.javaClass}" }
         var moved = 0
         for (f in fieldsOf(dst.javaClass, inclusiveBase)) {
-            val v = f.get(src) ?: continue
+            val v = f.get(src)
             f.set(dst, v)
             moved++
         }

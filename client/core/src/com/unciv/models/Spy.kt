@@ -77,6 +77,9 @@ class Spy private constructor() : IsPartOfGameInfoSerialization {
     fun setTransients(civInfo: Civilization) {
         this.civInfo = civInfo
         this.espionageManager = civInfo.espionageManager
+        // A synchronized location may have changed while preserving this Spy
+        // instance for the selected-spy UI. Resolve its city from that location.
+        this.city = null
     }
 
     fun setAction(newAction: SpyAction, turns: Int = 0) {

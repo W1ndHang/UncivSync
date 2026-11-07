@@ -8,6 +8,14 @@ import com.unciv.ui.popups.AskTextPopup
 import com.unciv.ui.screens.basescreen.BaseScreen
 
 class UnitRenamePopup(val screen: BaseScreen, val unit: MapUnit, val actionOnClose: ()->Unit) {
+    companion object {
+        internal fun renameUnit(unit: MapUnit, userInput: String) {
+            if (com.unciv.ui.screens.worldscreen.FrameSync.isFsMode(unit.civ.gameInfo)) {
+                com.unciv.ui.screens.worldscreen.FrameSync.sendUnitOp(unit, "unit.rename", extra = mapOf("name" to userInput))
+            } else unit.instanceName = if (userInput == "") null else userInput
+        }
+    }
+
     init {
         AskTextPopup(
             screen,
@@ -17,7 +25,7 @@ class UnitRenamePopup(val screen: BaseScreen, val unit: MapUnit, val actionOnClo
             validate = { it != unit.name },
             actionOnOk = { userInput ->
                 //If the user inputs an empty string, clear the unit instanceName so the base name is used
-                unit.instanceName = if (userInput == "") null else userInput
+                renameUnit(unit, userInput)
                 actionOnClose()
             }
         ).open()

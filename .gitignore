@@ -6,6 +6,7 @@
 # Public project documents and shared configuration
 !/.gitignore
 !/README.md
+!/CHANGELOG.md
 !/LICENSE
 !/CREDITS.md
 !/client/LICENSE

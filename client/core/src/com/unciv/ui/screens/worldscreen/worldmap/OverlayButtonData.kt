@@ -166,6 +166,13 @@ class ConnectRoadOverlayButtonData(val unitView: MapUnitView, val tile: Tile) : 
 
 // Contains the data required to draw a "move spy" button
 class MoveSpyOverlayButtonData(val spy: Spy, val city: City?) : OverlayButtonData {
+    private fun moveSpy() {
+        if (city == null) return
+        if (FrameSync.isFsMode(spy.civInfo.gameInfo)) {
+            FrameSync.sendCivOp("spy.move", mapOf("spy" to spy.name, "cityId" to city.id))
+        } else spy.moveTo(city)
+    }
+
     override fun createButton(worldMapHolder: WorldMapHolder): Actor {
         return getMoveSpyButton(worldMapHolder)
     }
@@ -197,7 +204,7 @@ class MoveSpyOverlayButtonData(val spy: Spy, val city: City?) : OverlayButtonDat
         val worldScreen = worldMapHolder.worldScreen
         spyActionButton.onActivation(UncivSound.Silent) {
             if (city != null) {
-                spy.moveTo(city)
+                moveSpy()
                 worldScreen.game.pushScreen{ EspionageOverviewScreen(worldScreen.selectedCiv, worldScreen) }
             } else {
                 worldScreen.game.pushScreen{ EspionageOverviewScreen(worldScreen.selectedCiv, worldScreen) }

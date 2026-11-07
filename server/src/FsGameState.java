@@ -150,7 +150,10 @@ public final class FsGameState {
             state.put("turn", gameInfo.getTurns());
             state.put("currentPlayer", gameInfo.getCurrentPlayer());
             state.put("paused", false);
-            state.put("full", diff.op == null || !diff.op.startsWith("unit."));
+            // Only buildFullSimMessage replaces the whole world. The client
+            // discards queued older deltas when full=true; a city/civ delta
+            // cannot supersede unrelated unit moves waiting in that queue.
+            state.put("full", false);
 
             // Build per-affected unit entries. De-dup by id — a MapUnit
             // can only belong to one civ, but let's be defensive in case the
@@ -226,7 +229,7 @@ public final class FsGameState {
             try {
                 com.badlogic.gdx.utils.Json rjson = com.unciv.json.UncivJsonKt.json();
                 java.util.List<Object> rels = new java.util.ArrayList<>();
-                for (Object r : gameInfo.getReligions().values()) rels.add(rjson.toJson(r));
+                for (Object r : gameInfo.getReligions().values()) rels.add(FsJson.parse(rjson.toJson(r)));
                 state.put("religions", rels);
             } catch (Throwable ignore) {}
 
@@ -920,6 +923,9 @@ public final class FsGameState {
                         so.put("rank", spy.getRank());
                         so.put("action", spy.getAction() == null ? "None" : spy.getAction().name());
                         so.put("turns", spy.getTurnsRemainingForAction());
+                        // Rank and private task progress must follow the same
+                        // official serialization contract as units and cities.
+                        so.put("obj", SNAPSHOT_JSON.toJson(spy));
                         City spyCity = null;
                         try { spyCity = spy.getCityOrNull(); } catch (Throwable ignore) {}
                         // cityId 为空表示"在老巢"；客户端据此 relink，不用自己算坐标

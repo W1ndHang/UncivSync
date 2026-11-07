@@ -255,40 +255,24 @@ public final class FsOpHandler {
         }
     }
 
-    /** Compact content-hash for a unit — used purely to detect changes. */
+    // Detect changes using the same complete serialized entities that are sent to
+    // clients. A hand-maintained fingerprint omitted nested state such as city
+    // religion pressures and unit ability charges. Json is not thread-safe.
+    private static final ThreadLocal<com.badlogic.gdx.utils.Json> DIFF_JSON = ThreadLocal.withInitial(() -> {
+        com.badlogic.gdx.utils.Json json = com.unciv.json.UncivJsonKt.json();
+        json.setUsePrototypes(false);
+        return json;
+    });
+
+    /** Complete serialized fingerprint, excluding core @Transient references. */
     private static String unitHash(MapUnit u) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(u.getCiv().getCivID()).append('|');
-        sb.append(u.getBaseUnit().getName()).append('|');
-        Tile t = u.getTile();
-        if (t != null) sb.append(t.getPosition().getX()).append(',').append(t.getPosition().getY());
-        sb.append('|').append(u.getMovement());
-        sb.append('|').append(u.getHealth());
-        sb.append('|').append(u.getAction());
-        sb.append('|').append(u.getName());
-        sb.append('|').append(u.getPromotions().getNumberOfPromotions());
-        sb.append('|').append(u.getPromotions().getXP());
-        sb.append('|').append(u.getPromotions().getPromotions());
-        sb.append('|').append(u.getInstanceName());
-        // 攻击次数：客户端用它判断"这回合还能不能再打"，必须纳入变化检测，
-        // 否则攻击后若位置/血量恰好没变（例如某些不扣移动力的攻击）就不会同步。
-        try { sb.append('|').append(u.getAttacksThisTurn()); } catch (Throwable ignore) {}
-        return sb.toString();
+        // Position lives on Tile, not inside the serialized MapUnit.
+        return posOf(u) + '|' + DIFF_JSON.get().toJson(u);
     }
 
-    /** Compact content-hash for a city — used purely to detect changes. */
+    /** Includes religion, population, construction and other nested state. */
     private static String cityHash(City c) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(c.getCiv().getCivID()).append('|');
-        sb.append(c.getName()).append('|');
-        sb.append(c.getPopulation().getPopulation()).append('|');
-        sb.append(c.getCityConstructions().getCurrentConstruction()).append('|');
-        sb.append(c.getHealth()).append('|');
-        sb.append(new java.util.TreeSet<>(c.getDisabledConstructions())).append('|');
-        // 轰击会改 attackedThisTurn（而它不在上面任何一项里）—— 不算进来的话
-        // 城市轰炸之后城市不会进 diff，客户端拿不到"本回合已轰击"标记，按钮就一直可点。
-        try { sb.append(c.getAttackedThisTurn()); } catch (Throwable ignore) {}
-        return sb.toString();
+        return c.getCiv().getCivID() + '|' + DIFF_JSON.get().toJson(c);
     }
 
     // ====================================================================
@@ -361,7 +345,7 @@ public final class FsOpHandler {
         // 其余是"设 action / 设 due / 设护卫"的一行公开 API。
         FsOpTable.register("unit.pillage", FsOpTable.Target.UNIT, (civ, gi, data) -> opUnitPillage(civ, data));
         FsOpTable.register("unit.paradrop", FsOpTable.Target.UNIT, (civ, gi, data) -> opUnitCoreAction(civ, data, "getParadropActions", "unit.paradrop"));
-        FsOpTable.register("unit.airSweep", FsOpTable.Target.UNIT, (civ, gi, data) -> opUnitCoreAction(civ, data, "getAirSweepActions", "unit.airSweep"));
+        FsOpTable.register("unit.airSweep", FsOpTable.Target.UNIT, FsOpHandler::opUnitAirSweep);
         FsOpTable.register("unit.addInCapital", FsOpTable.Target.UNIT, (civ, gi, data) -> opUnitCoreAction(civ, data, "getAddInCapitalActions", "unit.addInCapital"));
         FsOpTable.register("unit.removeHeresy", FsOpTable.Target.UNIT, (civ, gi, data) -> opUnitRemoveHeresy(civ, data));
         FsOpTable.register("unit.triggerUnique", FsOpTable.Target.UNIT, (civ, gi, data) -> opUnitTriggerUnique(civ, data));
@@ -665,17 +649,10 @@ public final class FsOpHandler {
         if (u == null) return false;
         Tile target = resolveMoveTile(gi, data);
         if (target == null) return false;
-        // 核心 swapMoveToTile 在"目的地没有可换的同类型单位"时**静默 return**
-        // （与宗教 foundReligion 同一批静默陷阱）。这里先做与核心一致的存在性校验，
-        // 换位后再确认位置真的变了 —— 失败显式拒绝并记日志，不再假成功。
-        var targetUnit = u.isCivilian() ? target.getCivilianUnit() : target.getMilitaryUnit();
-        if (targetUnit == null || targetUnit.getOwner() == u.getOwner()) {
-            System.out.println("[op] unit.swap rejected: no swappable unit at "
-                    + target.getPosition().getX() + "," + target.getPosition().getY());
-            return false;
-        }
+        // The core checks ownership, reachability, both units' movement and
+        // escort partners (including a target with only the opposite unit type).
+        if (!u.getMovement().canUnitSwapTo(target)) return rejectCurrent("core_cannot_swap");
         try {
-            var from = u.getTile();
             u.getMovement().swapMoveToTile(target, true);
             if (u.getTile() != target) {
                 System.out.println("[op] unit.swap noop: unit did not move to " + target.getPosition().getX()
@@ -731,6 +708,20 @@ public final class FsOpHandler {
             // 单位攻击完全交给核心 TargetHelper + Battle：服务端不再手写射程、架设、
             // 近战贴位或“相邻格漂移后改打别人”的兜底规则。
             if (!attackerUnit.canAttack()) return rejectCurrent("core_cannot_attack");
+            // Nuclear strikes target an explored tile, including empty land. Normal
+            // TargetHelper candidates require an enemy combatant and cannot model them.
+            if (attackerUnit.isNuclearWeapon()) {
+                MapUnitCombatant attacker = new MapUnitCombatant(attackerUnit);
+                if (!com.unciv.logic.battle.Nuke.INSTANCE.mayUseNuke(attacker, target))
+                    return rejectCurrent("core_nuclear_target_not_attackable");
+                com.unciv.logic.battle.Nuke.INSTANCE.NUKE(attacker, target);
+                // Blast-triggered wars and the nuclear-use penalty affect civs
+                // outside the epicenter too, even if none of their units changed.
+                FsOpResult result = currentResult();
+                if (result != null) for (Civilization affected : gi.getCivilizations())
+                    result.civAffected(affected.getCivID());
+                return true;
+            }
             var distances = attackerUnit.getMovement().getDistanceToTiles(true, null, null, true);
             java.util.List<AttackableTile> candidates = TargetHelper.INSTANCE.getAttackableEnemies(
                 attackerUnit, distances, null, false);
@@ -1147,6 +1138,8 @@ public final class FsOpHandler {
         if (u == null) return false;
         Tile t = u.getTile();
         if (t == null) return false;
+        if (t.getCity() != null && currentResult() != null)
+            currentResult().civAffected(t.getCity().getCiv().getCivID());
         return FsCoreActions.run(CLS_ACTIONS_RELIGION, "getSpreadReligionActions", u, t, 0);
     }
 
@@ -2294,6 +2287,7 @@ public final class FsOpHandler {
                 } catch (Throwable t2) {}
                 u.gift(recipient);
             }
+            if (currentResult() != null) currentResult().civAffected(recipient.getCivID());
             return true;
         } catch (Throwable t) { return false; }
     }
@@ -2516,6 +2510,20 @@ public final class FsOpHandler {
             "com.unciv.ui.screens.worldscreen.unit.actions.UnitActionsPillage";
     private static final String CLS_ACTIONS_GREAT_PERSON =
             "com.unciv.ui.screens.worldscreen.unit.actions.UnitActionsGreatPerson";
+
+    private static boolean opUnitAirSweep(Civilization civ, GameInfo game, Map<String, Object> data) {
+        // The toolbar action selects sweep mode; clicking a target executes it.
+        if (!data.containsKey("toX") && !data.containsKey("toY"))
+            return opUnitCoreAction(civ, data, "getAirSweepActions", "unit.airSweep");
+        MapUnit unit = findUnitByLoc(civ, data);
+        Tile target = resolveMoveTile(game, data);
+        if (unit == null || target == null || !unit.canAttack() || !unit.getBaseUnit().isAirUnit()
+                || !unitHasUnique(unit, com.unciv.models.ruleset.unique.UniqueType.CanAirsweep)
+                || unit.getTile().aerialDistanceTo(target) > unit.getRange()
+                || !target.isExplored(civ)) return rejectCurrent("core_cannot_air_sweep");
+        com.unciv.logic.battle.AirInterception.INSTANCE.airSweep(new MapUnitCombatant(unit), target);
+        return true;
+    }
 
     /**
      * 掠夺 —— 执行核心 `UnitActionsPillage.getPillageAction(unit, tile)` 的 lambda
@@ -2756,7 +2764,7 @@ public final class FsOpHandler {
      */
     private static boolean opSpyMove(Civilization civ, GameInfo gi, Map<String, Object> data) {
         com.unciv.models.Spy spy = findSpy(civ, data);
-        if (spy == null) return false;
+        if (spy == null || !spy.isAlive()) return false;
         try {
             String cityId = asStr(data.get("cityId"));
             if (cityId == null || cityId.isEmpty()) {
@@ -2776,13 +2784,13 @@ public final class FsOpHandler {
     }
 
     /**
-     * 设置间谍行动 —— 核心 `Spy.setAction(action, turns)`：
-     * 政变 `Coup`(1) / 反谍 `CounterIntelligence`(10) / 监视 / 窃取科技 / 操纵选举 …
-     * 核心对"需要倒计时的动作"有断言（turns 必须 > 0），我们在这里先挡一道。
+     * Player commands: stage a legal Coup(1), or cancel it with
+     * CounterIntelligence(10), matching EspionageOverviewScreen. Other actions
+     * and countdown transitions are driven by Spy.endTurn on the authority.
      */
     private static boolean opSpySetAction(Civilization civ, Map<String, Object> data) {
         com.unciv.models.Spy spy = findSpy(civ, data);
-        if (spy == null) return false;
+        if (spy == null || !spy.isAlive()) return false;
         String actionName = asStr(data.get("action"));
         if (actionName == null || actionName.isEmpty()) return false;
         try {
@@ -2795,7 +2803,15 @@ public final class FsOpHandler {
             }
             Integer turnsObj = asInt(data.get("turns"));
             int turns = turnsObj == null ? 0 : turnsObj;
-            if (action.getHasCountdownTurns() && turns <= 0) return false;
+            // These are the two commands exposed by the coup button. Moving,
+            // network establishment and tech theft are advanced by the core,
+            // not arbitrary client-supplied action names or countdown values.
+            if (!spy.canDoCoup()) return false;
+            if (action == com.unciv.models.SpyAction.Coup) {
+                if (turns != 1) return false;
+            } else if (action == com.unciv.models.SpyAction.CounterIntelligence) {
+                if (spy.getAction() != com.unciv.models.SpyAction.Coup || turns != 10) return false;
+            } else return false;
             spy.setAction(action, turns);
             return true;
         } catch (Throwable t) {

@@ -113,10 +113,20 @@ class MapUnitView internal constructor(
         Battle.attackOrNuke(MapUnitCombatant(unit), attackableTileView.getAttackableTile())
     @Readonly fun mayUseNuke(targetTileView: TileView): Boolean = Nuke.mayUseNuke(MapUnitCombatant(unit), targetTileView.unwrap())
     fun tryNuke(targetTileView: TileView): Boolean {
+        if (com.unciv.ui.screens.worldscreen.FrameSync.isFsMode(unit.civ.gameInfo)) {
+            val target = targetTileView.position()
+            return com.unciv.ui.screens.worldscreen.FrameSync.sendUnitOp(unit, "unit.attack",
+                extra = mapOf("toX" to target.x, "toY" to target.y))
+        }
         Nuke.NUKE(MapUnitCombatant(unit), targetTileView.unwrap())
         return true
     }
     fun tryAirSweep(targetTileView: TileView): Boolean {
+        if (com.unciv.ui.screens.worldscreen.FrameSync.isFsMode(unit.civ.gameInfo)) {
+            val target = targetTileView.position()
+            return com.unciv.ui.screens.worldscreen.FrameSync.sendUnitOp(unit, "unit.airSweep",
+                extra = mapOf("toX" to target.x, "toY" to target.y))
+        }
         AirInterception.airSweep(MapUnitCombatant(unit), targetTileView.unwrap())
         return true
     }

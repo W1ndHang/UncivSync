@@ -432,7 +432,8 @@ data class HexCoord(val x: Int = 0, val y: Int = 0) {
             json.writeObjectEnd()
         }
 
-        override fun read(json: Json, jsonData: JsonValue, type: Class<*>?): HexCoord {
+        override fun read(json: Json, jsonData: JsonValue, type: Class<*>?): HexCoord? {
+            if (jsonData.isNull) return null
             //TODO once we can assume there are no more games out there serialized in the verbose
             //     {"class": "java.lang.Float", "value": 23} format, replace with Int::class.java
             //     and remove `testCanDeserializeVerboseVector2Format`

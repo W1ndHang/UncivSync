@@ -128,7 +128,8 @@ public final class FsProtocol {
     //         推进确认；宗教 reject 带日志。
     // 1.0.02：同类排查 —— 单位换位(unit.swap)同样受核心静默 return 影响（目的地无可换
     //         单位时假成功），op 层加存在性校验 + 换位结果确认；拒绝带日志。
-    public static final String SERVER_BUILD = "1.0.02";
+    // 1.0.03: reconnect/readiness, complete special-action state, spy/formation sync fixes.
+    public static final String SERVER_BUILD = "1.0.03";
 
     // Server -> Client message types
     public static final String T_WELCOME = "welcome";
